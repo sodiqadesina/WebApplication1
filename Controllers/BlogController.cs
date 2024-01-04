@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using WebApplication1.Models;
 
 namespace WebApplication1.Controllers
@@ -14,11 +15,34 @@ namespace WebApplication1.Controllers
         }
 
         [Route("")]
-        public IActionResult Index()
+        public IActionResult Index(int page = 1)
         {
-            var posts = _db.Posts.OrderByDescending(x => x.Posted).Take(5).ToArray();
+            const int pageSize = 2;
+
+            var totalPosts = _db.Posts.Count();
+            var totalPages = (int)Math.Ceiling((double)totalPosts / pageSize);
+
+            var previousPage = page - 1;
+            var nextPage = page + 1;
+
+            ViewBag.CurrentPage = page;
+            ViewBag.PreviousPage = previousPage;
+            ViewBag.HasPreviousPage = previousPage >= 1;
+            ViewBag.NextPage = nextPage;
+            ViewBag.HasNextPage = nextPage <= totalPages;
+
+            var posts = _db.Posts
+                .OrderByDescending(x => x.Posted)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToArray();
+
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return PartialView(posts);
+
             return View(posts);
         }
+
 
 
         [Route("{year:int}/{month:int}/{key}")]
@@ -30,6 +54,7 @@ namespace WebApplication1.Controllers
             return View(post);
         }
 
+        [Authorize]
         [Route("create")]
         [HttpGet]
         public IActionResult Create() 
@@ -38,6 +63,7 @@ namespace WebApplication1.Controllers
             return View();
         }
 
+        [Authorize]
         [HttpPost]
         [Route("create")]
 
